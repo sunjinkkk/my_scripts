@@ -20,4 +20,4 @@ bash call_snp.sh
 ```bash
 perl gtf_extract.pl  input.gtf id.txt > output.gtf
 ```
-**id.txt**需要一个包含两列的文本文件。第一列是 transcript_id（转录本 ID），第二列是 gene_id（基因 ID），两列之间用制表符（tab）分隔。
+`id.txt`需要一个包含两列的文本文件。第一列是 transcript_id（转录本 ID），第二列是 gene_id（基因 ID），两列之间用制表符（tab）分隔。
