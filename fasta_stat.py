@@ -6,32 +6,32 @@ def fasta_statistics(input_file, output_file):
     total_Ns = 0
     scaffold_lengths = []
     gc_count = 0
+    current_scaffold_length = 0
 
     with open(input_file, "r") as file:
-        sequence = ""
         for line in file:
+            line = line.strip()
+            if not line:
+                continue  # 跳过空行
             if line.startswith(">"):
-                if sequence:
-                    # Process the previous sequence
-                    length = len(sequence)
-                    scaffold_lengths.append(length)
-                    total_bases += length
-                    total_Ns += sequence.count('N')
-                    gc_count += sequence.count('G') + sequence.count('C')
-                    sequence = ""
+                if total_scaffolds > 0:
+                    # 处理前一个scaffold
+                    scaffold_lengths.append(current_scaffold_length)
+                    current_scaffold_length = 0
                 total_scaffolds += 1
             else:
-                sequence += line.strip()
+                seq_line = line.upper()
+                length = len(seq_line)
+                current_scaffold_length += length
+                total_bases += length
+                total_Ns += seq_line.count('N')
+                gc_count += seq_line.count('G') + seq_line.count('C')
 
-        # Process the last sequence
-        if sequence:
-            length = len(sequence)
-            scaffold_lengths.append(length)
-            total_bases += length
-            total_Ns += sequence.count('N')
-            gc_count += sequence.count('G') + sequence.count('C')
+        # 处理最后一个scaffold
+        if current_scaffold_length > 0:
+            scaffold_lengths.append(current_scaffold_length)
 
-    scaffold_lengths = sorted(scaffold_lengths, reverse=True)
+    scaffold_lengths.sort(reverse=True)
     longest_scaffold = scaffold_lengths[0]
     shortest_scaffold = scaffold_lengths[-1]
     avg_length = total_bases / total_scaffolds
@@ -40,24 +40,27 @@ def fasta_statistics(input_file, output_file):
     def calculate_Nxx(scaffold_lengths, threshold):
         cumulative_length = 0
         total_length = sum(scaffold_lengths)
+        target = total_length * threshold
         for i, length in enumerate(scaffold_lengths):
             cumulative_length += length
-            if cumulative_length >= total_length * threshold:
+            if cumulative_length >= target:
                 return length, i + 1
 
     N50, L50 = calculate_Nxx(scaffold_lengths, 0.5)
     N75, L75 = calculate_Nxx(scaffold_lengths, 0.75)
     N90, L90 = calculate_Nxx(scaffold_lengths, 0.9)
 
-    scaffolds_1M = sum(1 for x in scaffold_lengths if x >= 1000000)
-    scaffolds_100K = sum(1 for x in scaffold_lengths if x >= 100000)
-    scaffolds_10K = sum(1 for x in scaffold_lengths if x >= 10000)
-    scaffolds_1K = sum(1 for x in scaffold_lengths if x >= 1000)
-
-    length_1M = sum(x for x in scaffold_lengths if x >= 1000000)
-    length_100K = sum(x for x in scaffold_lengths if x >= 100000)
-    length_10K = sum(x for x in scaffold_lengths if x >= 10000)
-    length_1K = sum(x for x in scaffold_lengths if x >= 1000)
+    thresholds = [1000000, 100000, 10000, 1000]
+    scaffold_counts = {}
+    length_sums = {}
+    for t in thresholds:
+        scaffold_counts[t] = 0
+        length_sums[t] = 0
+    for length in scaffold_lengths:
+        for t in thresholds:
+            if length >= t:
+                scaffold_counts[t] += 1
+                length_sums[t] += length
 
     with open(output_file, "w") as out:
         out.write(f"Total scaffolds: {total_scaffolds}\n")
@@ -73,14 +76,10 @@ def fasta_statistics(input_file, output_file):
         out.write(f"L90: {L90}\n")
         out.write(f"N90: {N90}\n")
         out.write(f"GC (%): {gc_percentage:.2f}\n")
-        out.write(f"Total scaffolds (>= 1000000 bp): {scaffolds_1M}\n")
-        out.write(f"Total scaffolds (>= 100000 bp): {scaffolds_100K}\n")
-        out.write(f"Total scaffolds (>= 10000 bp): {scaffolds_10K}\n")
-        out.write(f"Total scaffolds (>= 1000 bp): {scaffolds_1K}\n")
-        out.write(f"Total length (>= 1000000 bp): {length_1M}\n")
-        out.write(f"Total length (>= 100000 bp): {length_100K}\n")
-        out.write(f"Total length (>= 10000 bp): {length_10K}\n")
-        out.write(f"Total length (>= 1000 bp): {length_1K}\n")
+        for t in thresholds:
+            out.write(f"Total scaffolds (>= {t} bp): {scaffold_counts[t]}\n")
+        for t in thresholds:
+            out.write(f"Total length (>= {t} bp): {length_sums[t]}\n")
 
 def main():
     parser = argparse.ArgumentParser(description="Calculate statistics for a FASTA file.")
@@ -89,7 +88,6 @@ def main():
     
     args = parser.parse_args()
 
-    # Call the fasta_statistics function with the input and output files
     fasta_statistics(args.input, args.output)
 
 if __name__ == "__main__":
