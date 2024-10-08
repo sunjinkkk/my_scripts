@@ -21,3 +21,12 @@ bash call_snp.sh
 perl gtf_extract.pl  input.gtf id.txt > output.gtf
 ```
 `id.txt`需要一个包含两列的文本文件。第一列是 transcript_id（转录本 ID），第二列是 gene_id（基因 ID），两列之间用制表符（tab）分隔。
+## get_fasta_from_blast_xml.py
+从blast生成的xml文件中提取命中序列在比对中的序列片段。
+```bash
+# 正常使用
+python3 get_fasta_from_blast_xml.py -i blast.xml -o hseq.fasta
+# 可以将所有的xml文件放在一个文件夹中批量提取。
+ls *.xml | while read id ;do (python3 get_fasta_from_blast_xml.py -i ${id} -o ${id}.fa);done
+cat *.fa
+```
